@@ -173,6 +173,89 @@ button {
   border-color: var(--accent);
 }
 
+/* Botão Install App */
+.install-btn {
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.75rem;
+}
+
+/* Ações mobile (tema + hambúrguer) — escondidas no desktop. */
+.site-header__mobile {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+.hamburger:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Painel do menu mobile (dropdown abaixo da navbar). */
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.mobile-menu__search {
+  margin-bottom: 0.4rem;
+}
+.mobile-menu__search .search__input {
+  width: 100%;
+}
+.mobile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.25rem;
+  color: var(--text);
+  font-size: 1rem;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  background: none;
+}
+.mobile-menu__link:last-child {
+  border-bottom: none;
+}
+.mobile-menu__link:hover {
+  color: var(--link);
+  text-decoration: none;
+}
+.mobile-menu__install {
+  border: 1px solid var(--border) !important;
+  border-radius: 6px;
+  justify-content: center;
+  margin-top: 0.6rem;
+  color: var(--accent);
+}
+
+/* Foco visível e área de toque confortável nos controles do header. */
+.site-brand:focus-visible,
+.site-nav__link:focus-visible,
+.theme-toggle:focus-visible,
+.hamburger:focus-visible,
+.mobile-menu__link:focus-visible,
+.install-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .page__body {
   flex: 1;
   width: 100%;
@@ -1017,18 +1100,70 @@ button {
 
 /* ==========================================================================
    Responsivo
+   Breakpoints: desktop >1024 · tablet 768–1024 · mobile <768 · pequeno <480
    ========================================================================== */
-@media (max-width: 900px) {
+
+/* Nunca permitir scroll horizontal acidental. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* ----- Tablet ----- */
+@media (max-width: 1024px) {
+  :root {
+    --content-w: 680px;
+  }
+  .site-nav--desktop {
+    gap: 0.9rem;
+  }
+  .site-search__input {
+    width: 150px;
+  }
+  .page__body--with-sidebar {
+    gap: 2rem;
+  }
+}
+
+/* ----- Mobile: navbar vira menu hambúrguer ----- */
+@media (max-width: 768px) {
+  .site-nav--desktop {
+    display: none;
+  }
+  .site-header__mobile {
+    display: flex;
+  }
+  .mobile-menu {
+    display: flex;
+  }
+
+  .site-header__inner {
+    padding: 0.7rem 1rem;
+  }
+  .page__body {
+    padding: 1.5rem 1rem;
+  }
+
+  /* Sumário lateral vai para cima do conteúdo. */
   .page__body--with-sidebar {
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 1.5rem;
   }
   .page__sidebar {
     position: static;
     order: -1;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
   }
+
+  .home-title {
+    font-size: clamp(1.6rem, 7vw, 2.1rem);
+  }
+  .post__title {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+
+  /* Editor visual: toolbar quebra organizada (já tem flex-wrap). */
   .editor__panes {
     grid-template-columns: 1fr;
   }
@@ -1036,20 +1171,30 @@ button {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+
+  /* Admin */
+  .admin__bar-inner {
+    padding: 0.6rem 1rem;
+  }
+  .admin__main {
+    padding: 1.25rem 1rem 3rem;
+  }
+  .admin-page__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .post-form__actions {
+    flex-wrap: wrap;
+  }
+  .post-form__actions .btn {
+    flex: 1 1 auto;
+  }
 }
 
-@media (max-width: 640px) {
+/* ----- Mobile pequeno ----- */
+@media (max-width: 480px) {
   body {
-    font-size: 17px;
-  }
-  .site-search__input {
-    width: 130px;
-  }
-  .home-title {
-    font-size: 1.9rem;
-  }
-  .post__title {
-    font-size: 1.7rem;
+    font-size: 16px;
   }
   .field-row {
     grid-template-columns: 1fr;
@@ -1057,7 +1202,19 @@ button {
   .stats {
     grid-template-columns: 1fr;
   }
-  .site-nav {
-    gap: 0.8rem;
+  .search__form {
+    flex-direction: column;
+  }
+  .search__form .btn {
+    width: 100%;
+  }
+  .preview-modal__body {
+    padding: 1.25rem 1.1rem 2rem;
+  }
+  .post-form__actions .btn {
+    flex: 1 1 100%;
+  }
+  .rte__toolbar {
+    gap: 0.25rem;
   }
 }

@@ -84,6 +84,14 @@ node -e "crypto.subtle.digest('SHA-256', new TextEncoder().encode('SUA_SENHA')).
 
 ## 4. Configurar o binding D1
 
+O `wrangler.toml` real é **gitignored** (contém o ID do seu banco). Copie o
+exemplo e preencha:
+
+```bash
+cp wrangler.example.toml wrangler.toml         # Linux/macOS
+Copy-Item wrangler.example.toml wrangler.toml  # PowerShell
+```
+
 Em `wrangler.toml`:
 
 ```toml
@@ -181,6 +189,60 @@ adriansantos.blog/
 ```
 
 ---
+
+## PWA / instalar como app
+
+O blog é um **PWA** (via `vite-plugin-pwa`): pode ser instalado como app e
+funciona com cache de assets estáticos.
+
+- **Manifest:** gerado no build em `dist/manifest.webmanifest` (configurado em
+  `vite.config.ts`); o `<link rel="manifest">` é injetado automaticamente.
+- **Service worker:** gerado em `dist/sw.js` (Workbox). Faz precache só de
+  assets estáticos. **Não** cacheia `/api/*` (chamadas sempre vão à rede) e o
+  fallback de navegação ignora `/api/` e `/admin` (`navigateFallbackDenylist`),
+  então conteúdo do painel/admin não fica cacheado indevidamente.
+- **Botão Install App:** aparece na navbar (desktop) e no menu mobile **apenas
+  quando o navegador oferece o prompt nativo** (`beforeinstallprompt`) e o app
+  ainda não está instalado. Caso contrário, fica oculto — nada quebra.
+
+### Ícones
+
+Os ícones em `public/icons/` e `public/apple-touch-icon.png` são **placeholders**
+(um "A" branco sobre azul), gerados por `scripts/gen-icons.mjs`:
+
+```bash
+node scripts/gen-icons.mjs
+```
+
+Substitua-os pela arte real quando tiver (mantendo os mesmos nomes/tamanhos:
+`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`).
+
+### Como testar a instalação
+
+1. `npm run cf:dev` (ou `npm run build && npm run preview`).
+2. Abra no **Chrome/Edge desktop ou Android** → deve surgir o botão **Install App**
+   (ou o ícone de instalar na barra de endereço). Clique e confirme.
+3. Reabra como app: ele roda em janela própria (standalone) e o botão Install
+   some (detecção via `display-mode: standalone`).
+
+### Limitações conhecidas
+
+- **iOS/Safari:** não dispara `beforeinstallprompt`. A instalação é manual
+  (Compartilhar → *Adicionar à Tela de Início*). Por isso o botão **não aparece**
+  no iOS — é o comportamento esperado.
+- **Firefox (desktop):** também não suporta o prompt nativo; o botão fica oculto.
+- O service worker só funciona em **build** (desligado em `npm run dev`) e exige
+  **HTTPS** em produção (Cloudflare Pages já fornece) ou `localhost`.
+
+## Responsividade
+
+- Breakpoints: desktop >1024px · tablet 768–1024px · mobile <768px · pequeno <480px.
+- Navbar vira **menu hambúrguer** abaixo de 768px (acessível: `aria-expanded`,
+  fecha com **Esc**, ao clicar num link e ao clicar fora).
+- Sumário lateral do post sobe para cima do conteúdo no mobile.
+- Tabela de posts do admin tem `overflow-x`; formulários viram 1 coluna;
+  toolbar do editor quebra linha; botões de ação ocupam largura no mobile.
+- `overflow-x: hidden` global evita scroll horizontal.
 
 ## Segurança
 
