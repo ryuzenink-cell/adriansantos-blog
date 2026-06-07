@@ -1,0 +1,6 @@
+# Cloudflare Pages — SPA fallback.
+# Garante que rotas client-side (ex.: /posts/slug, /admin/...) recarreguem
+# corretamente entregando o index.html. As rotas de API (/api/*) são tratadas
+# pelas Functions e NÃO devem cair neste fallback.
+/api/*  /api/:splat  200
+/*      /index.html  200
