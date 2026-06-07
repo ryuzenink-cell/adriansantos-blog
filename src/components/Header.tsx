@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 
-// Link do GitHub do autor (ajuste para o seu perfil).
-const GITHUB_URL = 'https://github.com/adriansantos';
+// Link do GitHub do autor.
+const GITHUB_URL = 'https://github.com/ryuzenink-cell';
 
 /** Cabeçalho público: nome do site à esquerda, navegação à direita. */
 export function Header() {
@@ -32,7 +32,7 @@ export function Header() {
             className="site-nav__link"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub"
+            aria-label="GitHub profile"
             title="GitHub"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

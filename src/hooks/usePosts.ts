@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Post, PostDraft } from '../types';
-import { postsRepository } from '../lib/postsRepository';
+import { api } from '../services/api';
 
 /**
- * Hook central de posts. Carrega tudo do repository e expõe operações de CRUD.
- *
- * Como o repository é assíncrono por design, este hook já lida com loading —
- * facilitando a futura troca de localStorage por chamadas às Cloudflare
- * Functions / D1 sem mexer nos componentes.
+ * Hook de posts do ADMIN — fala com a API real (Cloudflare D1 via Functions).
+ * Não usa mais localStorage. As rotas exigem sessão (cookie HttpOnly).
  */
 export function usePosts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const all = await postsRepository.list();
-    setPosts(all);
-    setLoading(false);
+    setError(null);
+    try {
+      setPosts(await api.listPosts());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load posts.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -25,24 +28,25 @@ export function usePosts() {
   }, [refresh]);
 
   const createPost = useCallback(async (draft: PostDraft) => {
-    const created = await postsRepository.create(draft);
+    const created = await api.createPost(draft);
     await refresh();
     return created;
   }, [refresh]);
 
   const updatePost = useCallback(async (id: number, draft: PostDraft) => {
-    const updated = await postsRepository.update(id, draft);
+    const updated = await api.updatePost(id, draft);
     await refresh();
     return updated;
   }, [refresh]);
 
   const deletePost = useCallback(async (id: number) => {
-    await postsRepository.remove(id);
+    await api.deletePost(id);
     await refresh();
   }, [refresh]);
 
+  // Publica/despublica reaproveitando o PUT.
   const togglePublish = useCallback(async (post: Post) => {
-    const isPublished = post.status === 'published';
+    const willPublish = post.status !== 'published';
     const draft: PostDraft = {
       title: post.title,
       slug: post.slug,
@@ -50,30 +54,14 @@ export function usePosts() {
       content_html: post.content_html,
       language: post.language,
       tags: post.tags,
-      status: isPublished ? 'draft' : 'published',
-      // Ao publicar pela primeira vez, define published_at.
-      published_at: isPublished
-        ? post.published_at
-        : post.published_at || new Date().toISOString(),
+      status: willPublish ? 'published' : 'draft',
+      published_at: willPublish
+        ? post.published_at || new Date().toISOString()
+        : post.published_at,
     };
-    await postsRepository.update(post.id, draft);
+    await api.updatePost(post.id, draft);
     await refresh();
   }, [refresh]);
 
-  return {
-    posts,
-    loading,
-    refresh,
-    createPost,
-    updatePost,
-    deletePost,
-    togglePublish,
-  };
-}
-
-/** Apenas posts publicados, opcionalmente filtrados por idioma. */
-export function selectPublished(posts: Post[], language?: 'en' | 'pt'): Post[] {
-  return posts.filter(
-    (p) => p.status === 'published' && (!language || p.language === language),
-  );
+  return { posts, loading, error, refresh, createPost, updatePost, deletePost, togglePublish };
 }

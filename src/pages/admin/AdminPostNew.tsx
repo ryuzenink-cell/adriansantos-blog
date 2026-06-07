@@ -1,17 +1,27 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../../components/AdminLayout';
 import { PostForm } from '../../components/PostForm';
-import { usePosts } from '../../hooks/usePosts';
+import { api } from '../../services/api';
 import type { PostDraft } from '../../types';
 
-/** Criação de post. */
+/** Criação de post pelo editor visual. */
 export function AdminPostNew() {
-  const { createPost } = usePosts();
   const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (draft: PostDraft) => {
-    await createPost(draft);
-    navigate('/admin/posts');
+    setBusy(true);
+    setError(null);
+    try {
+      await api.createPost(draft);
+      navigate('/admin/posts');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create post.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -21,9 +31,11 @@ export function AdminPostNew() {
           <h1>New post</h1>
         </div>
         <PostForm
-          submitLabel="Create post"
+          mode="new"
+          busy={busy}
+          error={error}
           onSubmit={handleSubmit}
-          onCancel={() => navigate('/admin/posts')}
+          onBack={() => navigate('/admin/posts')}
         />
       </div>
     </AdminLayout>

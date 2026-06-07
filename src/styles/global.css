@@ -899,6 +899,123 @@ button {
 }
 
 /* ==========================================================================
+   Editor visual (TipTap / RichTextEditor)
+   ========================================================================== */
+.rte {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.rte--loading {
+  padding: 1rem;
+  color: var(--muted);
+}
+.rte__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.rte__btn {
+  min-width: 34px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.rte__btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.rte__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.rte__btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.rte__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+.rte__content.ProseMirror {
+  min-height: 320px;
+  padding: 1rem 1.2rem;
+  outline: none;
+}
+.rte__content.ProseMirror:focus {
+  outline: none;
+}
+/* Placeholder quando vazio (TipTap usa <p></p> vazio). */
+.rte__content.ProseMirror p.is-editor-empty:first-child::before {
+  content: 'Write your post…';
+  color: var(--muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Modal de preview do post
+   ========================================================================== */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 3rem 1rem;
+  z-index: 100;
+  overflow-y: auto;
+}
+.preview-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 760px;
+}
+.preview-modal__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.preview-modal__body {
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+.admin__user {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.route-loading {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ==========================================================================
    Responsivo
    ========================================================================== */
 @media (max-width: 900px) {

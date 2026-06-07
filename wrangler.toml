@@ -1,0 +1,21 @@
+# Cloudflare Pages + D1 — configuração do projeto.
+#
+# Com `pages_build_output_dir` definido, este projeto é tratado como Pages.
+# `wrangler pages dev` e `wrangler pages deploy` leem os bindings abaixo.
+#
+# No painel do Cloudflare Pages, garanta o mesmo binding:
+#   Settings -> Functions -> D1 database bindings
+#   Variable name: DB   |   D1 database: adriansantos-blog-prod
+
+name = "adriansantos-blog"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+# Web Crypto (usado para SHA-256 e tokens) já é global em Workers/Pages,
+# não precisa de nodejs_compat.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "adriansantos-blog-prod"
+# Substitua pelo ID real do seu banco (wrangler d1 list mostra o database_id).
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"

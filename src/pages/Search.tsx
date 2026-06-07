@@ -1,44 +1,36 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
-import { usePosts, selectPublished } from '../hooks/usePosts';
+import { api } from '../services/api';
 import { formatLongDate } from '../utils/date';
-
-/** Remove tags HTML para permitir busca no texto puro do conteúdo. */
-function stripHtml(html: string): string {
-  if (typeof document === 'undefined') return html.replace(/<[^>]+>/g, ' ');
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent ?? '';
-}
+import type { Post } from '../types';
 
 /**
- * Busca local simples sobre título, excerpt e conteúdo dos posts publicados.
- * A query vem da URL (?q=) e pode ser refinada no campo desta página.
+ * Busca local sobre os posts publicados (título, excerpt e tags).
+ * Obs.: a listagem pública não traz content_html (payload menor), então a
+ * busca não cobre o corpo do texto nesta etapa.
  */
 export function Search() {
-  const { posts } = usePosts();
   const [params, setParams] = useSearchParams();
   const initialQuery = params.get('q') ?? '';
   const [query, setQuery] = useState(initialQuery);
+  const [posts, setPosts] = useState<Post[]>([]);
 
-  const published = useMemo(() => selectPublished(posts), [posts]);
+  useEffect(() => {
+    let active = true;
+    api.getPublicPosts().then((p) => active && setPosts(p)).catch(() => active && setPosts([]));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return published.filter((post) => {
-      const haystack = [
-        post.title,
-        post.excerpt,
-        stripHtml(post.content_html),
-        post.tags.join(' '),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [published, query]);
+    return posts.filter((post) =>
+      [post.title, post.excerpt, post.tags.join(' ')].join(' ').toLowerCase().includes(q),
+    );
+  }, [posts, query]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +50,7 @@ export function Search() {
             className="search__input"
             value={query}
             autoFocus
-            placeholder="Search posts by title, excerpt or content…"
+            placeholder="Search posts by title, excerpt or tags…"
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search query"
           />

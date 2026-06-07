@@ -1,19 +1,21 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { AuthProvider } from './hooks/useAuth';
 
-// Páginas públicas
+// Páginas públicas (no bundle principal — leves).
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Search } from './pages/Search';
 import { PostPage } from './pages/PostPage';
 
-// Painel administrativo
+// Painel administrativo carregado sob demanda (code-splitting). Assim o editor
+// visual (TipTap) NÃO pesa no bundle público.
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { AdminLogin } from './pages/admin/AdminLogin';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { AdminPosts } from './pages/admin/AdminPosts';
-import { AdminPostNew } from './pages/admin/AdminPostNew';
-import { AdminPostEdit } from './pages/admin/AdminPostEdit';
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin').then((m) => ({ default: m.AdminLogin })));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminPosts = lazy(() => import('./pages/admin/AdminPosts').then((m) => ({ default: m.AdminPosts })));
+const AdminPostNew = lazy(() => import('./pages/admin/AdminPostNew').then((m) => ({ default: m.AdminPostNew })));
+const AdminPostEdit = lazy(() => import('./pages/admin/AdminPostEdit').then((m) => ({ default: m.AdminPostEdit })));
 
 /** Rola para o topo a cada troca de rota (exceto quando há âncora #). */
 function ScrollToTop() {
@@ -27,8 +29,10 @@ function ScrollToTop() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ScrollToTop />
-      <Routes>
+      <AuthProvider>
+        <ScrollToTop />
+        <Suspense fallback={<div className="route-loading">Loading…</div>}>
+        <Routes>
         {/* Público */}
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
@@ -72,7 +76,9 @@ export default function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+        </Suspense>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -1,34 +1,31 @@
 import { useState } from 'react';
 import type { Post, PostDraft, Language, PostStatus } from '../types';
-import { PostEditor } from './PostEditor';
+import { RichTextEditor } from './RichTextEditor';
 import { slugify } from '../utils/slugify';
-import { toDateInputValue } from '../utils/date';
+import { toDateInputValue, formatLongDate } from '../utils/date';
+import { sanitizeHtml } from '../utils/sanitize';
 
 interface PostFormProps {
+  mode: 'new' | 'edit';
   initial?: Post;
-  submitLabel: string;
+  busy?: boolean;
+  error?: string | null;
   onSubmit: (draft: PostDraft) => void | Promise<void>;
-  onCancel?: () => void;
+  onBack: () => void;
 }
 
-/** Converte "a, b, c" -> ["a","b","c"] sem vazios/duplicatas. */
 function parseTags(input: string): string[] {
   return Array.from(
-    new Set(
-      input
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-    ),
+    new Set(input.split(',').map((t) => t.trim()).filter(Boolean)),
   );
 }
 
 /**
- * Formulário de criação/edição de post. Compartilhado entre as telas
- * "new" e "edit". Mantém o slug sincronizado com o título até o usuário
- * editar o slug manualmente.
+ * Painel de criação/edição estilo CMS. Usa o editor visual (TipTap) — o usuário
+ * não digita HTML. Ao salvar, o HTML do editor é enviado à API, que sanitiza
+ * antes de gravar no D1.
  */
-export function PostForm({ initial, submitLabel, onSubmit, onCancel }: PostFormProps) {
+export function PostForm({ mode, initial, busy, error, onSubmit, onBack }: PostFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
@@ -38,46 +35,57 @@ export function PostForm({ initial, submitLabel, onSubmit, onCancel }: PostFormP
   const [publishedAt, setPublishedAt] = useState(toDateInputValue(initial?.published_at ?? ''));
   const [tags, setTags] = useState((initial?.tags ?? []).join(', '));
   const [contentHtml, setContentHtml] = useState(initial?.content_html ?? '');
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
 
   const onTitleChange = (value: string) => {
     setTitle(value);
     if (!slugTouched) setSlug(slugify(value));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const buildDraft = (statusOverride?: PostStatus): PostDraft | null => {
+    if (!title.trim()) {
+      setLocalError('Title is required.');
+      return null;
+    }
+    // TipTap em branco gera "<p></p>".
+    const isEmpty = !contentHtml.replace(/<p>\s*<\/p>/g, '').replace(/<[^>]+>/g, '').trim();
+    if (isEmpty) {
+      setLocalError('Content is required.');
+      return null;
+    }
+    setLocalError('');
 
-    if (!title.trim()) return setError('Title is required.');
-    if (!slug.trim()) return setError('Slug is required.');
-    if (!contentHtml.trim()) return setError('Content is required.');
-
-    // Se publicado e sem data, usa agora.
+    const finalStatus = statusOverride ?? status;
     let published_at = '';
     if (publishedAt) {
       published_at = new Date(`${publishedAt}T00:00:00`).toISOString();
-    } else if (status === 'published') {
+    } else if (finalStatus === 'published') {
       published_at = new Date().toISOString();
     }
 
-    const draft: PostDraft = {
+    return {
       title: title.trim(),
-      slug: slugify(slug),
+      slug: slugify(slug) || slugify(title),
       excerpt: excerpt.trim(),
       content_html: contentHtml,
       language,
-      status,
+      status: finalStatus,
       published_at,
       tags: parseTags(tags),
     };
+  };
 
+  const submit = (statusOverride?: PostStatus) => {
+    const draft = buildDraft(statusOverride);
+    if (!draft) return;
+    if (statusOverride) setStatus(statusOverride);
     void onSubmit(draft);
   };
 
   return (
-    <form className="post-form" onSubmit={handleSubmit}>
-      {error && <p className="form-error">{error}</p>}
+    <div className="post-form">
+      {(localError || error) && <p className="form-error">{localError || error}</p>}
 
       <div className="field">
         <label htmlFor="title">Title</label>
@@ -86,7 +94,7 @@ export function PostForm({ initial, submitLabel, onSubmit, onCancel }: PostFormP
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          required
+          placeholder="Post title"
         />
       </div>
 
@@ -100,7 +108,6 @@ export function PostForm({ initial, submitLabel, onSubmit, onCancel }: PostFormP
             setSlugTouched(true);
             setSlug(e.target.value);
           }}
-          required
         />
         <small className="field__hint">URL: /posts/{slug || '…'}</small>
       </div>
@@ -119,63 +126,75 @@ export function PostForm({ initial, submitLabel, onSubmit, onCancel }: PostFormP
       <div className="field-row">
         <div className="field">
           <label htmlFor="language">Language</label>
-          <select
-            id="language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
-          >
-            <option value="en">English (en)</option>
-            <option value="pt">Português (pt)</option>
+          <select id="language" value={language} onChange={(e) => setLanguage(e.target.value as Language)}>
+            <option value="en">English (EN)</option>
+            <option value="pt">Português (PT)</option>
           </select>
         </div>
-
         <div className="field">
           <label htmlFor="status">Status</label>
-          <select
-            id="status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as PostStatus)}
-          >
+          <select id="status" value={status} onChange={(e) => setStatus(e.target.value as PostStatus)}>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
           </select>
         </div>
-
         <div className="field">
           <label htmlFor="published_at">Published at</label>
-          <input
-            id="published_at"
-            type="date"
-            value={publishedAt}
-            onChange={(e) => setPublishedAt(e.target.value)}
-          />
+          <input id="published_at" type="date" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
         </div>
       </div>
 
       <div className="field">
         <label htmlFor="tags">Tags</label>
-        <input
-          id="tags"
-          type="text"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="comma, separated, tags"
-        />
+        <input id="tags" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="comma, separated, tags" />
       </div>
 
       <div className="field">
         <label>Content</label>
-        <PostEditor value={contentHtml} onChange={setContentHtml} />
+        <RichTextEditor value={contentHtml} onChange={setContentHtml} />
       </div>
 
       <div className="post-form__actions">
-        <button type="submit" className="btn btn--primary">{submitLabel}</button>
-        {onCancel && (
-          <button type="button" className="btn btn--ghost" onClick={onCancel}>
-            Cancel
+        {mode === 'new' ? (
+          <>
+            <button type="button" className="btn" disabled={busy} onClick={() => submit('draft')}>
+              Save draft
+            </button>
+            <button type="button" className="btn btn--primary" disabled={busy} onClick={() => submit('published')}>
+              Publish
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn--primary" disabled={busy} onClick={() => submit()}>
+            Update
           </button>
         )}
+        <button type="button" className="btn btn--ghost" onClick={() => setShowPreview(true)}>
+          Preview
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
+          Back to posts
+        </button>
       </div>
-    </form>
+
+      {showPreview && (
+        <div className="preview-overlay" role="dialog" aria-modal="true" onClick={() => setShowPreview(false)}>
+          <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-modal__bar">
+              <span>Preview</span>
+              <button type="button" className="btn btn--ghost" onClick={() => setShowPreview(false)}>Close</button>
+            </div>
+            <article className="preview-modal__body">
+              <h1 className="post__title">{title || 'Untitled'}</h1>
+              <div className="post__meta">
+                <span>{formatLongDate(publishedAt ? `${publishedAt}T00:00:00` : new Date().toISOString(), language)}</span>
+                <span className="post__lang">{language.toUpperCase()}</span>
+              </div>
+              <div className="prose" dangerouslySetInnerHTML={{ __html: sanitizeHtml(contentHtml) }} />
+            </article>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

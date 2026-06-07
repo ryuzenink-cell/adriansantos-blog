@@ -1,21 +1,38 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { PostContent } from '../components/PostContent';
 import { TableOfContents } from '../components/TableOfContents';
-import { usePosts } from '../hooks/usePosts';
+import { api, ApiError } from '../services/api';
 import { parseContent } from '../utils/toc';
 import { formatLongDate } from '../utils/date';
+import type { Post } from '../types';
 
-/** Página de um post: /posts/:slug */
+/** Página de um post: /posts/:slug — busca no D1 via /api/public/post. */
 export function PostPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { posts, loading } = usePosts();
+  const [post, setPost] = useState<Post | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const post = useMemo(
-    () => posts.find((p) => p.slug === slug),
-    [posts, slug],
-  );
+  useEffect(() => {
+    if (!slug) return;
+    let active = true;
+    setLoading(true);
+    setNotFound(false);
+    api
+      .getPublicPost(slug)
+      .then((p) => active && setPost(p))
+      .catch((e) => {
+        if (!active) return;
+        if (e instanceof ApiError && e.status === 404) setNotFound(true);
+        else setNotFound(true);
+      })
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [slug]);
 
   // Injeta ids nos headings e extrai o sumário.
   const parsed = useMemo(
@@ -31,7 +48,7 @@ export function PostPage() {
     );
   }
 
-  if (!post) {
+  if (notFound || !post) {
     return (
       <Layout>
         <article className="prose prose--page">
@@ -46,7 +63,6 @@ export function PostPage() {
   }
 
   const tocTitle = post.language === 'pt' ? 'Nesta página' : 'On this page';
-
   const sidebar =
     parsed.headings.length > 0 ? (
       <TableOfContents headings={parsed.headings} title={tocTitle} />

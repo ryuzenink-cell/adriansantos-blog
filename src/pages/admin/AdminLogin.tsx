@@ -1,31 +1,36 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 /**
- * Tela de login do admin.
- *
- * DESENVOLVIMENTO LOCAL APENAS — credenciais fixas (admin / 123).
- * Ver os comentários em src/hooks/useAuth.ts sobre como trocar por
- * autenticação real (Cloudflare Function + admin_users + cookie HttpOnly).
+ * Tela de login do admin. Autentica contra a tabela admin_users do D1 via
+ * POST /api/auth/login. Sem credenciais, dicas ou textos de "dev only".
  */
 export function AdminLogin() {
-  const { authenticated, login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  // Já logado? Vai direto para o dashboard.
-  if (authenticated) return <Navigate to="/admin" replace />;
+  // Já autenticado? Vai para o destino pretendido ou ao dashboard.
+  const from = (location.state as { from?: string } | null)?.from ?? '/admin';
+  if (user) return <Navigate to={from} replace />;
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (login(username, password)) {
+    setBusy(true);
+    try {
+      await login(username, password);
       navigate('/admin', { replace: true });
-    } else {
-      setError('Invalid credentials.');
+    } catch {
+      // Mensagem genérica (não revela se é usuário ou senha).
+      setError('Invalid username or password.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -33,9 +38,6 @@ export function AdminLogin() {
     <div className="login">
       <div className="login__card">
         <h1 className="login__title">Admin login</h1>
-        <p className="login__note">
-          Local development only. Use <code>admin</code> / <code>123</code>.
-        </p>
         <form onSubmit={onSubmit}>
           {error && <p className="form-error">{error}</p>}
           <div className="field">
@@ -59,8 +61,8 @@ export function AdminLogin() {
               autoComplete="current-password"
             />
           </div>
-          <button type="submit" className="btn btn--primary btn--block">
-            Sign in
+          <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
       </div>

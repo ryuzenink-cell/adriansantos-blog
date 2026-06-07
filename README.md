@@ -1,78 +1,159 @@
 # AdrianSantos.blog
 
-Blog pessoal minimalista de Adrian Santos. Parte pública (foco em leitura) +
-painel administrativo protegido. MVP local com **Vite + React + TypeScript**,
-arquitetado para futura integração com **Cloudflare Pages Functions** e
-**Cloudflare D1**.
+Blog pessoal de Adrian Santos. Parte pública minimalista (foco em leitura) +
+painel administrativo estilo CMS, agora conectado ao **Cloudflare D1** através de
+**Cloudflare Pages Functions**.
 
-> **Etapa atual:** tudo roda localmente. Os posts são persistidos em
-> `localStorage` (semeados a partir de `src/data/mockPosts.ts`). Ainda **não**
-> há banco real conectado — mas a camada de dados e os tipos já espelham o
-> schema do D1, então a migração será suave.
-
----
-
-## Stack
-
-- Vite + React 18 + TypeScript
-- React Router 6
-- CSS puro com variáveis de tema (claro/escuro)
-- Sem Tailwind, sem backend nesta etapa
-- Persistência local via `localStorage`
-
-## Funcionalidades
-
-**Público**
-- Home textual com posts publicados agrupados por **ano/mês**
-- Seletor de idioma **PT | EN**
-- Página de post `/posts/:slug` com tipografia de leitura e **sumário lateral
-  automático** (gerado a partir dos `h2`/`h3`)
-- Página **About**
-- **Busca** local por título, excerpt e conteúdo
-- **Tema claro/escuro** (preferência salva no `localStorage`)
-
-**Admin** (`/admin`)
-- Login local de teste
-- Dashboard com contadores (total / publicados / rascunhos)
-- Lista de posts com ações: editar, publicar/despublicar, excluir (com confirmação)
-- Criar/editar post com **editor de HTML + preview ao vivo** (botões para
-  parágrafo, h2, h3, negrito, itálico, link, imagem por URL, código e citação)
+- **Front-end:** Vite + React 18 + TypeScript + React Router + CSS próprio
+- **Back-end:** Cloudflare Pages Functions (`/functions`)
+- **Banco:** Cloudflare D1 (`adriansantos-blog-prod`), binding `DB`
+- **Editor:** TipTap (WYSIWYG) — sem digitar HTML
+- **Auth:** sessão por cookie HttpOnly, senha verificada por SHA-256 contra `admin_users`
 
 ---
 
-## Como rodar
+## Arquitetura
+
+```
+Browser ──► React (Pages, dist/) ──► /api/* ──► Pages Functions ──► D1 (DB)
+```
+
+- O front **nunca** fala direto com o D1. Tudo passa pela API em `/api/*`.
+- A sessão vive num cookie **HttpOnly** (inacessível ao JS). Nada de token ou
+  senha em `localStorage`.
+- O `content_html` é **sanitizado no servidor** antes de gravar (defesa XSS).
+
+### Endpoints
+
+Públicos:
+- `GET /api/public/posts` — lista posts publicados (sem corpo), p/ a home.
+- `GET /api/public/post?slug=...` — um post publicado pelo slug (404 se não existir).
+
+Auth:
+- `POST /api/auth/login` — `{ username, password }`; cria sessão + cookie.
+- `POST /api/auth/logout` — invalida a sessão e limpa o cookie.
+- `GET  /api/auth/me` — usuário da sessão atual (401 se não houver).
+
+Admin (exigem sessão — protegidos por `functions/api/posts/_middleware.ts`):
+- `GET    /api/posts` — lista todos (draft + published).
+- `GET    /api/posts/:id` — busca p/ edição.
+- `POST   /api/posts` — cria.
+- `PUT    /api/posts/:id` — atualiza.
+- `DELETE /api/posts/:id` — exclui.
+
+---
+
+## 1. Instalar dependências
 
 Pré-requisito: **Node.js 18+**.
 
 ```bash
-# 1. Instalar dependências
 npm install
-
-# 2. Rodar em desenvolvimento (abre em http://localhost:5173)
-npm run dev
-
-# 3. Build de produção (gera ./dist)
-npm run build
-
-# 4. Pré-visualizar o build localmente
-npm run preview
 ```
 
-### Acessar o painel admin
+## 2. Rodar o front-end isolado (sem API)
 
-1. Abra `http://localhost:5173/admin/login`
-2. Entre com **usuário `admin`** e **senha `123`**
+Útil para mexer só no visual. As chamadas a `/api/*` **não** funcionam aqui.
 
-> ⚠️ **Esse login é APENAS para desenvolvimento local.** As credenciais são
-> fixas no front-end e a sessão é só uma flag em `localStorage` — isso **não é
-> seguro** e **não deve ir para produção**. Veja `src/hooks/useAuth.ts` para o
-> plano de substituição por autenticação real.
+```bash
+npm run dev          # http://localhost:5173
+```
 
-### Resetar os dados locais
+## 3. Rodar tudo localmente (front + Functions + D1) com Wrangler
 
-Os posts ficam em `localStorage` sob a chave `adriansantos_blog_posts_v1`.
-Para voltar aos posts de exemplo, limpe o storage do site no DevTools, ou rode
-no console: `localStorage.clear()` e recarregue.
+Esta é a forma de testar a aplicação completa.
+
+```bash
+# 3.1 Criar e popular o banco D1 LOCAL (uma vez)
+npm run db:schema:local   # aplica schema.sql no D1 local
+npm run db:seed:local     # cria usuário admin local + 1 post de exemplo
+
+# 3.2 Buildar e servir com as Functions + D1 local
+npm run cf:dev            # build + wrangler pages dev  ->  http://localhost:8788
+```
+
+> O D1 local é um SQLite gerenciado pelo Wrangler em `.wrangler/`. Não afeta o
+> banco de produção.
+
+**Usuário do seed local:** `admin` / `changeme123` (apenas local — ver `seed.local.sql`).
+Para gerar o hash SHA-256 de outra senha:
+
+```bash
+node -e "crypto.subtle.digest('SHA-256', new TextEncoder().encode('SUA_SENHA')).then(b=>console.log(Buffer.from(b).toString('hex')))"
+```
+
+## 4. Configurar o binding D1
+
+Em `wrangler.toml`:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "adriansantos-blog-prod"
+database_id = "SEU_DATABASE_ID"   # veja com: npx wrangler d1 list
+```
+
+No código das Functions o banco é acessado como `env.DB`.
+
+## 5. Configurar no Cloudflare Pages (produção)
+
+No painel do Cloudflare Pages, ao conectar o repositório:
+
+- **Framework preset:** None (ou Vite, se aparecer)
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+
+## 6. Vincular o D1 ao Pages
+
+Pages → seu projeto → **Settings → Functions → D1 database bindings**:
+
+- **Variable name:** `DB`
+- **D1 database:** `adriansantos-blog-prod`
+
+Aplicar o schema no banco **remoto** (uma vez):
+
+```bash
+npm run db:schema:remote
+```
+
+> O usuário admin de produção já está cadastrado manualmente na tabela
+> `admin_users`. **Não** rode o seed local no banco remoto.
+
+## 7. Testar o login real
+
+1. Acesse `/admin/login`.
+2. Use o usuário cadastrado em `admin_users` (em produção, o seu; em local, o do seed).
+3. A senha é validada comparando o **SHA-256** dela com `password_hash`.
+   A tela mostra apenas a mensagem genérica `Invalid username or password.` em erro.
+
+## 8. Criar posts pelo painel
+
+1. `/admin` → **New post**.
+2. Escreva no **editor visual** (negrito, títulos, listas, citação, código, link,
+   imagem por URL) — sem digitar HTML.
+3. **Save draft** ou **Publish**. Use **Preview** para ver como ficará.
+4. Posts publicados aparecem automaticamente na home.
+
+## 9. Deploy
+
+```bash
+npm run cf:deploy        # build + wrangler pages deploy
+```
+
+(ou apenas `git push` se o projeto estiver com deploy automático no Pages.)
+
+---
+
+## Scripts
+
+| Script | O que faz |
+|---|---|
+| `npm run dev` | Vite (só front, sem API) |
+| `npm run build` | Type-check + build em `dist/` |
+| `npm run cf:dev` | Build + `wrangler pages dev` (front + Functions + D1 local) |
+| `npm run cf:deploy` | Build + deploy no Cloudflare Pages |
+| `npm run db:schema:local` / `:remote` | Aplica `schema.sql` |
+| `npm run db:seed:local` | Popula o D1 local (admin + post) |
 
 ---
 
@@ -80,97 +161,40 @@ no console: `localStorage.clear()` e recarregue.
 
 ```
 adriansantos.blog/
-├─ index.html
-├─ schema.sql                  # schema do Cloudflare D1 (futuro)
-├─ public/
-│  ├─ favicon.svg
-│  └─ _redirects               # SPA fallback p/ Cloudflare Pages
+├─ wrangler.toml              # config Pages + binding D1 (DB)
+├─ schema.sql                 # schema do D1
+├─ seed.local.sql            # seed SÓ para o D1 local
+├─ public/_redirects         # SPA fallback (mantém /api/* nas Functions)
 ├─ functions/
-│  └─ api/posts.ts             # STUB de Cloudflare Function (D1) — futuro
+│  ├─ _lib/                   # libs server (não viram rotas)
+│  │  ├─ http.ts  db.ts  auth.ts  sanitize.ts  slugify.ts  tags.ts
+│  ├─ api/
+│  │  ├─ public/posts.ts  public/post.ts
+│  │  ├─ auth/login.ts  auth/logout.ts  auth/me.ts
+│  │  └─ posts/_middleware.ts  posts/index.ts  posts/[id].ts
 └─ src/
-   ├─ main.tsx
-   ├─ App.tsx                  # rotas (público + admin)
-   ├─ types.ts                 # tipos espelhando o schema do D1
-   ├─ components/
-   │  ├─ Header.tsx
-   │  ├─ Layout.tsx
-   │  ├─ ThemeToggle.tsx
-   │  ├─ PostArchive.tsx
-   │  ├─ PostContent.tsx
-   │  ├─ TableOfContents.tsx
-   │  ├─ ProtectedRoute.tsx
-   │  ├─ AdminLayout.tsx
-   │  ├─ PostForm.tsx
-   │  └─ PostEditor.tsx
-   ├─ data/mockPosts.ts        # seed inicial
-   ├─ lib/postsRepository.ts   # camada de dados (localStorage -> D1 no futuro)
-   ├─ hooks/
-   │  ├─ usePosts.ts
-   │  ├─ useAuth.ts
-   │  └─ useTheme.ts
-   ├─ pages/
-   │  ├─ Home.tsx
-   │  ├─ About.tsx
-   │  ├─ Search.tsx
-   │  ├─ PostPage.tsx
-   │  └─ admin/
-   │     ├─ AdminLogin.tsx
-   │     ├─ AdminDashboard.tsx
-   │     ├─ AdminPosts.tsx
-   │     ├─ AdminPostNew.tsx
-   │     └─ AdminPostEdit.tsx
-   ├─ utils/
-   │  ├─ date.ts
-   │  ├─ slugify.ts
-   │  ├─ sanitize.ts
-   │  ├─ toc.ts
-   │  └─ groupPostsByMonth.ts
-   └─ styles/global.css
+   ├─ services/api.ts         # cliente HTTP (cookie de sessão)
+   ├─ hooks/ useAuth.tsx  usePosts.ts  useTheme.ts
+   ├─ components/ ... RichTextEditor.tsx (TipTap)  PostForm.tsx
+   ├─ pages/ Home  About  Search  PostPage  + admin/*
+   ├─ utils/  styles/global.css
 ```
 
 ---
 
-## Futuro deploy no Cloudflare Pages + D1
+## Segurança
 
-A arquitetura já está preparada. Passos previstos:
+Implementado nesta versão:
+- Sessão por **cookie HttpOnly + SameSite=Lax** (Secure em https).
+- Senha verificada por **SHA-256** contra `admin_users` (sem senha em texto puro).
+- Token de sessão aleatório; no banco guarda-se só o **hash** do token.
+- Mensagem de login **genérica** (não revela se o usuário existe).
+- Rotas admin protegidas **no backend** (middleware), não só no React Router.
+- `content_html` **sanitizado no servidor** (allowlist) antes de gravar.
+- Queries 100% com **prepared statements** do D1.
 
-### 1. Deploy do front (Cloudflare Pages)
-- **Build command:** `npm run build`
-- **Build output directory:** `dist`
-- O arquivo `public/_redirects` garante o roteamento SPA (rotas como
-  `/posts/...` e `/admin/...` recarregam corretamente).
-
-### 2. Banco D1
-```bash
-# criar o banco (ou usar o que você já criou)
-npx wrangler d1 create adriansantos-blog
-
-# aplicar o schema
-npx wrangler d1 execute adriansantos-blog --file=./schema.sql
-```
-Adicione o binding do D1 como `DB` no projeto do Pages (Settings → Functions →
-D1 bindings) e/ou em `wrangler.toml`.
-
-### 3. Trocar a camada de dados
-- Em `src/lib/postsRepository.ts`, substitua as leituras/escritas em
-  `localStorage` por chamadas `fetch('/api/posts...')`.
-- Implemente as Functions em `functions/api/` (já há um stub em
-  `functions/api/posts.ts`). Os hooks e componentes **não precisam mudar**.
-
-### 4. Autenticação real (substituir o login de dev)
-Conforme comentado em `src/hooks/useAuth.ts`:
-1. `POST /api/admin/login` valida o usuário na tabela `admin_users` do D1.
-2. Comparar a senha com `password_hash` usando **bcrypt/scrypt/argon2** (nunca texto puro).
-3. Emitir sessão assinada em **cookie HttpOnly + Secure + SameSite**.
-4. Proteger `/api/admin/*` validando o cookie no servidor.
-5. O front passa a checar a sessão via `GET /api/admin/me`.
-
----
-
-## Notas de segurança (importante)
-
-- O login atual (`admin` / `123`) e o `ProtectedRoute` são **client-side** e
-  servem **só para desenvolvimento**. Não oferecem segurança real.
-- O conteúdo HTML dos posts passa por um sanitizador básico
-  (`src/utils/sanitize.ts`). Para produção, use uma lib dedicada
-  (ex.: **DOMPurify**) e/ou sanitize no servidor antes de gravar no D1.
+Evolução recomendada (comentada no código):
+- Migrar o hash de senha de SHA-256 para **Argon2id / bcrypt / PBKDF2 com salt**
+  por usuário (ver `functions/_lib/auth.ts`).
+- Considerar **DOMPurify** / sanitização adicional e rotação de sessões.
+- Upload de imagens via **Cloudflare R2** (hoje a imagem é inserida por URL).

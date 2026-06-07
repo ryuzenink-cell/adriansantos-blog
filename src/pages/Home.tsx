@@ -1,42 +1,54 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { PostArchive } from '../components/PostArchive';
-import { usePosts, selectPublished } from '../hooks/usePosts';
+import { api } from '../services/api';
 import { groupPostsByMonth } from '../utils/groupPostsByMonth';
-import type { Language } from '../types';
+import type { Language, Post } from '../types';
 
 const LANG_KEY = 'adriansantos_blog_lang';
 
 function getInitialLang(): Language {
-  const saved = localStorage.getItem(LANG_KEY);
-  return saved === 'pt' ? 'pt' : 'en';
+  return localStorage.getItem(LANG_KEY) === 'pt' ? 'pt' : 'en';
 }
 
 /**
- * Home: título central, seletor de idioma PT|EN e o arquivo de posts
- * publicados agrupado por ano/mês. A sidebar lista os meses ("Nesta página").
+ * Home: título central, seletor PT|EN e arquivo de posts publicados (do D1
+ * via /api/public/posts) agrupado por ano/mês. Minimalista, sem cards.
  */
 export function Home() {
-  const { posts, loading } = usePosts();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>(getInitialLang);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .getPublicPosts()
+      .then((p) => active && setPosts(p))
+      .catch((e) => active && setError(e instanceof Error ? e.message : 'Failed to load posts.'))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const changeLanguage = (lang: Language) => {
     setLanguage(lang);
     localStorage.setItem(LANG_KEY, lang);
   };
 
-  const published = useMemo(
-    () => selectPublished(posts, language),
+  const filtered = useMemo(
+    () => posts.filter((p) => p.language === language),
     [posts, language],
   );
 
   const groups = useMemo(
-    () => groupPostsByMonth(published, language),
-    [published, language],
+    () => groupPostsByMonth(filtered, language),
+    [filtered, language],
   );
 
   const sidebarTitle = language === 'pt' ? 'Nesta página' : 'On this page';
-
   const sidebar = groups.length > 0 && (
     <nav className="toc" aria-label={sidebarTitle}>
       <p className="toc__title">{sidebarTitle}</p>
@@ -75,8 +87,10 @@ export function Home() {
 
       {loading ? (
         <p className="archive__empty">Loading…</p>
+      ) : error ? (
+        <p className="archive__empty">{error}</p>
       ) : (
-        <PostArchive posts={published} language={language} />
+        <PostArchive posts={filtered} language={language} />
       )}
     </Layout>
   );

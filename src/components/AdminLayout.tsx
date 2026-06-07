@@ -7,11 +7,11 @@ import { useAuth } from '../hooks/useAuth';
  * link para ver o blog público e botão de logout.
  */
 export function AdminLayout({ children }: { children: ReactNode }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/admin/login', { replace: true });
   };
 
@@ -34,10 +34,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </NavLink>
           </div>
           <div className="admin__actions">
+            {user && <span className="admin__user">@{user.username}</span>}
             <Link to="/" className="admin__link" target="_blank" rel="noopener">
               View blog ↗
             </Link>
-            <button type="button" className="btn btn--ghost" onClick={handleLogout}>
+            <button type="button" className="btn btn--ghost" onClick={() => void handleLogout()}>
               Logout
             </button>
           </div>

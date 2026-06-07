@@ -6,7 +6,7 @@ import type { Post } from '../../types';
 
 /** Lista de posts com ações: editar, publicar/despublicar, excluir. */
 export function AdminPosts() {
-  const { posts, loading, deletePost, togglePublish } = usePosts();
+  const { posts, loading, error, deletePost, togglePublish } = usePosts();
 
   const handleDelete = (post: Post) => {
     // Confirmação antes de excluir.
@@ -26,6 +26,8 @@ export function AdminPosts() {
             + New post
           </Link>
         </div>
+
+        {error && <p className="form-error">{error}</p>}
 
         {loading ? (
           <p className="muted">Loading…</p>

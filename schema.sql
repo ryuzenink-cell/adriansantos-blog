@@ -1,7 +1,7 @@
 -- ============================================================================
--- Cloudflare D1 — schema do blog adriansantos.blog
--- Aplicar com Wrangler (ver README) quando for conectar o banco real.
--- O tipo Post no front (src/types.ts) espelha a tabela `posts`.
+-- Cloudflare D1 — schema do blog adriansantos.blog (banco: adriansantos-blog-prod)
+-- Aplicar local:  npm run db:schema:local
+-- Aplicar remoto: npm run db:schema:remote
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS posts (
@@ -34,12 +34,27 @@ CREATE TABLE IF NOT EXISTS post_tags (
 
 CREATE TABLE IF NOT EXISTS admin_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT UNIQUE,
   password_hash TEXT NOT NULL,
+  password_algorithm TEXT NOT NULL DEFAULT 'sha256',
+  role TEXT NOT NULL DEFAULT 'admin',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  last_login_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índices úteis para a listagem pública.
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  session_token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_posts_status_published
   ON posts (status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_token
+  ON admin_sessions (session_token_hash);
