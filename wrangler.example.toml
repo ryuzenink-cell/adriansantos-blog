@@ -1,0 +1,11 @@
+# Cloudflare Pages + D1 example configuration.
+# Copy this file to wrangler.toml and replace the values with your own Cloudflare project data.
+
+name = "your-blog-name"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "your-d1-database-name"
+database_id = "your-d1-database-id"
