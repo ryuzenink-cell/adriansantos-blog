@@ -244,6 +244,36 @@ Substitua-os pela arte real quando tiver (mantendo os mesmos nomes/tamanhos:
   toolbar do editor quebra linha; botões de ação ocupam largura no mobile.
 - `overflow-x: hidden` global evita scroll horizontal.
 
+## SEO: sitemap & robots
+
+- **`/sitemap.xml`** é gerado dinamicamente pela Pages Function
+  `functions/sitemap.xml.ts`, consultando o D1. Inclui a home (`priority 1.0`),
+  `/about` (`0.8`) e cada post **publicado** em `/posts/<slug>` (`0.7`), com
+  `lastmod` derivado de `updated_at` → `published_at` → `created_at` (omitido se
+  não houver data confiável). Rascunhos, `/admin` e `/api` ficam de fora.
+  Content-Type: `application/xml; charset=utf-8`. Cache de edge de 1h, então
+  posts novos entram no sitemap em até uma hora.
+- **`/robots.txt`** (`public/robots.txt`) libera o site, bloqueia
+  `/admin`, `/login`, `/dashboard`, `/api` e aponta para o sitemap.
+- O service worker **não** intercepta `/sitemap.xml` nem `/robots.txt`
+  (`navigateFallbackDenylist`), então abrir essas URLs no navegador retorna o
+  conteúdo real, não o app.
+
+### Testar
+```bash
+npm run cf:dev
+# depois:
+#   http://localhost:8788/sitemap.xml   -> XML com home, /about e posts publicados
+#   http://localhost:8788/robots.txt    -> texto com a linha Sitemap:
+```
+Validação rápida: as `<loc>` devem ser absolutas (`https://adriansantos.blog/...`),
+posts publicados aparecem, rascunhos não, e nenhuma URL `/admin` ou `/api`.
+
+### Google Search Console
+Em produção, envie `https://adriansantos.blog/sitemap.xml` em
+**Search Console → Sitemaps**. O `robots.txt` já referencia o sitemap, então
+os crawlers também o descobrem sozinhos.
+
 ## Segurança
 
 Implementado nesta versão:
