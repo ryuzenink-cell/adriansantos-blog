@@ -1,7 +1,14 @@
 import { Layout } from '../components/Layout';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 /** Página About — texto provisório em inglês, visual minimalista. */
 export function About() {
+  useDocumentMeta({
+    title: 'About | AdrianSantos.blog',
+    description: "About Adrian Santos — software engineer, and this blog's purpose.",
+    canonicalPath: '/about',
+  });
+
   return (
     <Layout>
       <article className="prose prose--page">

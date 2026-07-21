@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { api } from '../services/api';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { formatLongDate } from '../utils/date';
 import type { Post } from '../types';
 
@@ -15,6 +16,12 @@ export function Search() {
   const initialQuery = params.get('q') ?? '';
   const [query, setQuery] = useState(initialQuery);
   const [posts, setPosts] = useState<Post[]>([]);
+
+  useDocumentMeta({
+    title: 'Search | AdrianSantos.blog',
+    description: 'Search posts by title, excerpt or tags on AdrianSantos.blog.',
+    canonicalPath: '/search',
+  });
 
   useEffect(() => {
     let active = true;

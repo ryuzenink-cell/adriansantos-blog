@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { PostArchive } from '../components/PostArchive';
 import { api } from '../services/api';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { groupPostsByMonth } from '../utils/groupPostsByMonth';
 import type { Language, Post } from '../types';
 
@@ -16,6 +17,12 @@ function getInitialLang(): Language {
  * via /api/public/posts) agrupado por ano/mês. Minimalista, sem cards.
  */
 export function Home() {
+  useDocumentMeta({
+    title: 'AdrianSantos.blog',
+    description: 'Adrian Santos Blog - notes on software engineering and personal projects.',
+    canonicalPath: '/',
+  });
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

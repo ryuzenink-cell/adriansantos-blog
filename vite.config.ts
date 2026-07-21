@@ -43,10 +43,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,woff2}'],
         // SPA fallback para navegação offline...
         navigateFallback: '/index.html',
-        // ...EXCETO API/admin/arquivos de SEO: nunca servir o shell cacheado
-        // para essas rotas (dados sensíveis vêm de /api e jamais são cacheados;
-        // sitemap/robots precisam do conteúdo real, não do index.html).
-        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/sitemap\.xml$/, /^\/robots\.txt$/],
+        // ...EXCETO API/admin/arquivos de SEO/posts: nunca servir o shell
+        // cacheado para essas rotas (dados sensíveis vêm de /api e jamais são
+        // cacheados; sitemap/robots precisam do conteúdo real, não do
+        // index.html; /posts/:slug é renderizado no servidor pela Pages
+        // Function e precisa sempre ir à rede, nunca ao shell da SPA em cache).
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/admin/,
+          /^\/sitemap\.xml$/,
+          /^\/robots\.txt$/,
+          /^\/posts\//,
+        ],
         // Sem runtimeCaching para /api: chamadas sempre vão à rede.
         cleanupOutdatedCaches: true,
       },

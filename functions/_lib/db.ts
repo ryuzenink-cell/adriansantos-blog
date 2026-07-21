@@ -3,6 +3,9 @@
 export interface Env {
   // Binding do D1 configurado no wrangler.toml / painel do Pages.
   DB: D1Database;
+  // Binding automático do Cloudflare Pages para os assets estáticos do build
+  // (usado para buscar o index.html compilado e transformá-lo com HTMLRewriter).
+  ASSETS: Fetcher;
 }
 
 /** Linha crua da tabela posts. */

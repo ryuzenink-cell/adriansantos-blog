@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
+import { RouteAnalytics } from './components/RouteAnalytics';
 
 // Páginas públicas (no bundle principal — leves).
 import { Home } from './pages/Home';
@@ -31,6 +32,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ScrollToTop />
+        <RouteAnalytics />
         <Suspense fallback={<div className="route-loading">Loading…</div>}>
         <Routes>
         {/* Público */}

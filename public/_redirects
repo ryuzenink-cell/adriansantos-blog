@@ -1,6 +1,23 @@
-# Cloudflare Pages — SPA fallback.
-# Garante que rotas client-side (ex.: /posts/slug, /admin/...) recarreguem
-# corretamente entregando o index.html. As rotas de API (/api/*) são tratadas
-# pelas Functions e NÃO devem cair neste fallback.
-/api/*  /api/:splat  200
-/*      /index.html  200
+# Cloudflare Pages — regras explícitas de fallback da SPA.
+#
+# /api/*       -> tratado pelas Pages Functions (functions/api/**), nunca cai aqui.
+# /posts/:slug -> tratado pela Pages Function functions/posts/[slug].ts (SSR),
+#                 também nunca cai aqui.
+#
+# O rewrite aponta para "/" (não "/index.html"): o Cloudflare Pages normaliza
+# qualquer request para o path literal "/index.html" com um redirect 308 para
+# "/" (clean URLs), o que faria estas regras redirecionarem de verdade em vez
+# de servir o conteúdo da SPA na URL original. "/" já resolve para o
+# index.html do build sem esse redirect.
+#
+# Só as rotas abaixo (client-side, React Router) devolvem o shell da SPA com
+# status 200. Qualquer outra URL não listada aqui, e sem asset estático
+# correspondente, recebe um 404 real do Cloudflare Pages — evitando soft 404s
+# em que URLs inexistentes eram silenciosamente redirecionadas para a home.
+/about                   /  200
+/search                  /  200
+/admin                   /  200
+/admin/login             /  200
+/admin/posts             /  200
+/admin/posts/new         /  200
+/admin/posts/edit/:id    /  200

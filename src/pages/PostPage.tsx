@@ -4,6 +4,7 @@ import { Layout } from '../components/Layout';
 import { PostContent } from '../components/PostContent';
 import { TableOfContents } from '../components/TableOfContents';
 import { api, ApiError } from '../services/api';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { parseContent } from '../utils/toc';
 import { formatLongDate } from '../utils/date';
 import type { Post } from '../types';
@@ -39,6 +40,14 @@ export function PostPage() {
     () => (post ? parseContent(post.content_html) : { html: '', headings: [] }),
     [post],
   );
+
+  // Mantém title/description/canonical coerentes em navegações client-side
+  // (chegar aqui via link da SPA, sem passar pelo SSR de functions/posts/[slug].ts).
+  useDocumentMeta({
+    title: post ? `${post.title} | Adrian Santos` : 'AdrianSantos.blog',
+    description: post?.excerpt || undefined,
+    canonicalPath: post ? `/posts/${post.slug}` : undefined,
+  });
 
   if (loading) {
     return (
