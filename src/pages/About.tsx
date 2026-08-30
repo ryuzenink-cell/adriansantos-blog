@@ -30,7 +30,7 @@ export function About() {
         <h2>Get in touch</h2>
         <p>
           You can find my code on{' '}
-          <a href="https://github.com/adriansantos" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/ryuzenink-cell" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
           . Thanks for reading.

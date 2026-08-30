@@ -5,6 +5,7 @@ import { groupPostsByMonth } from '../utils/groupPostsByMonth';
 interface PostArchiveProps {
   posts: Post[];
   language: Language;
+  showLanguage?: boolean;
 }
 
 /**
@@ -12,7 +13,7 @@ interface PostArchiveProps {
  * resumos — apenas títulos linkáveis, no espírito de um blog clássico.
  * Cada grupo recebe um id (âncora) consumido pelo sumário lateral.
  */
-export function PostArchive({ posts, language }: PostArchiveProps) {
+export function PostArchive({ posts, language, showLanguage = false }: PostArchiveProps) {
   const groups = groupPostsByMonth(posts, language);
 
   if (groups.length === 0) {
@@ -34,6 +35,7 @@ export function PostArchive({ posts, language }: PostArchiveProps) {
                 <Link to={`/posts/${post.slug}`} className="archive__link">
                   {post.title}
                 </Link>
+                {showLanguage && <span className="post__lang">{post.language.toUpperCase()}</span>}
               </li>
             ))}
           </ul>

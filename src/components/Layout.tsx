@@ -5,19 +5,24 @@ interface LayoutProps {
   children: ReactNode;
   /** Conteúdo opcional da coluna lateral direita (ex.: sumário). */
   sidebar?: ReactNode;
+  sidebarClassName?: string;
 }
 
 /**
  * Layout público: header fixo no topo, conteúdo central com largura máxima
  * e uma sidebar opcional à direita (visível só no desktop).
  */
-export function Layout({ children, sidebar }: LayoutProps) {
+export function Layout({ children, sidebar, sidebarClassName = '' }: LayoutProps) {
   return (
     <div className="page">
       <Header />
       <div className={`page__body${sidebar ? ' page__body--with-sidebar' : ''}`}>
         <main className="page__main">{children}</main>
-        {sidebar && <aside className="page__sidebar">{sidebar}</aside>}
+        {sidebar && (
+          <aside className={`page__sidebar${sidebarClassName ? ` ${sidebarClassName}` : ''}`}>
+            {sidebar}
+          </aside>
+        )}
       </div>
       <footer className="site-footer">
         <p>© {new Date().getFullYear()} Adrian Santos · Built with Vite + React</p>

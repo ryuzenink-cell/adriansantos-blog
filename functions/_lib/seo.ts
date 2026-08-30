@@ -34,6 +34,22 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+/** Tempo de leitura com ritmo ligeiramente diferente para PT e EN. */
+export function estimateReadingMinutes(html: string, language: string): number {
+  const text = stripHtml(html);
+  const words = text ? text.split(/\s+/).length : 0;
+  const wordsPerMinute = language === 'pt' ? 200 : 220;
+  return Math.max(1, Math.ceil(words / wordsPerMinute));
+}
+
+export function datesDiffer(first: string, second: string): boolean {
+  if (!first || !second) return false;
+  const firstTime = new Date(first).getTime();
+  const secondTime = new Date(second).getTime();
+  if (Number.isNaN(firstTime) || Number.isNaN(secondTime)) return first !== second;
+  return firstTime !== secondTime;
+}
+
 /** Corta o texto em até `maxLen` chars, evitando quebrar no meio de uma palavra. */
 export function truncate(text: string, maxLen = 160): string {
   if (text.length <= maxLen) return text;

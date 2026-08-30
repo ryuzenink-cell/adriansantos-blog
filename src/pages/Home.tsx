@@ -1,68 +1,106 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { PostArchive } from '../components/PostArchive';
 import { api } from '../services/api';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { formatLongDate } from '../utils/date';
 import { groupPostsByMonth } from '../utils/groupPostsByMonth';
+import {
+  getLanguagePreference,
+  preferenceAfterSelection,
+  saveLanguagePreference,
+  type LanguageFilter,
+  type LanguagePreference,
+} from '../utils/languagePreference';
 import type { Language, Post } from '../types';
 
-const LANG_KEY = 'adriansantos_blog_lang';
+const COPY = {
+  en: {
+    eyebrow: 'Software Engineering',
+    introduction: 'Technical articles on software, study, career, and the projects that connect them.',
+    latest: 'Latest articles',
+    archive: 'Archive',
+    onPage: 'On this page',
+    all: 'All',
+    loading: 'Loading articles...',
+    error: 'The articles could not be loaded. Please try again in a moment.',
+    empty: 'No published articles match this language yet.',
+    viewAll: 'View articles in all languages',
+  },
+  pt: {
+    eyebrow: 'Engenharia de Software',
+    introduction: 'Artigos técnicos sobre software, estudos, carreira e os projetos que conectam tudo isso.',
+    latest: 'Artigos recentes',
+    archive: 'Arquivo',
+    onPage: 'Nesta página',
+    all: 'Todos',
+    loading: 'Carregando artigos...',
+    error: 'Não foi possível carregar os artigos. Tente novamente em instantes.',
+    empty: 'Ainda não há artigos publicados neste idioma.',
+    viewAll: 'Ver artigos em todos os idiomas',
+  },
+} satisfies Record<Language, Record<string, string>>;
 
-function getInitialLang(): Language {
-  return localStorage.getItem(LANG_KEY) === 'pt' ? 'pt' : 'en';
-}
-
-/**
- * Home: título central, seletor PT|EN e arquivo de posts publicados (do D1
- * via /api/public/posts) agrupado por ano/mês. Minimalista, sem cards.
- */
 export function Home() {
-  useDocumentMeta({
-    title: 'AdrianSantos.blog',
-    description: 'Adrian Santos Blog - notes on software engineering and personal projects.',
-    canonicalPath: '/',
-  });
-
+  const [preference, setPreference] = useState<LanguagePreference>(getLanguagePreference);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<Language>(getInitialLang);
+  const [error, setError] = useState(false);
+  const copy = COPY[preference.interfaceLanguage];
+
+  useDocumentMeta({
+    title: 'AdrianSantos.blog',
+    description: preference.interfaceLanguage === 'pt'
+      ? 'Artigos técnicos de Adrian Santos sobre Engenharia de Software, estudos, carreira e projetos.'
+      : 'Technical articles by Adrian Santos on software engineering, study, career, and projects.',
+    canonicalPath: '/',
+  });
 
   useEffect(() => {
     let active = true;
     api
       .getPublicPosts()
-      .then((p) => active && setPosts(p))
-      .catch((e) => active && setError(e instanceof Error ? e.message : 'Failed to load posts.'))
+      .then((loadedPosts) => active && setPosts(loadedPosts))
+      .catch(() => active && setError(true))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, []);
 
-  const changeLanguage = (lang: Language) => {
-    setLanguage(lang);
-    localStorage.setItem(LANG_KEY, lang);
+  const changeLanguage = (filter: LanguageFilter) => {
+    const next = preferenceAfterSelection(preference, filter);
+    setPreference(next);
+    saveLanguagePreference(next);
   };
 
   const filtered = useMemo(
-    () => posts.filter((p) => p.language === language),
-    [posts, language],
+    () => preference.filter === 'all'
+      ? posts
+      : posts.filter((post) => post.language === preference.filter),
+    [posts, preference.filter],
   );
-
+  const latest = filtered.slice(0, 4);
   const groups = useMemo(
-    () => groupPostsByMonth(filtered, language),
-    [filtered, language],
+    () => groupPostsByMonth(filtered, preference.interfaceLanguage),
+    [filtered, preference.interfaceLanguage],
   );
+  const counts = useMemo(() => ({
+    all: posts.length,
+    pt: posts.filter((post) => post.language === 'pt').length,
+    en: posts.filter((post) => post.language === 'en').length,
+  }), [posts]);
 
-  const sidebarTitle = language === 'pt' ? 'Nesta página' : 'On this page';
-  const sidebar = groups.length > 0 && (
-    <nav className="toc" aria-label={sidebarTitle}>
-      <p className="toc__title">{sidebarTitle}</p>
+  const sidebar = filtered.length > 0 && (
+    <nav className="toc" aria-label={copy.onPage}>
+      <p className="toc__title">{copy.onPage}</p>
       <ul className="toc__list">
-        {groups.map((g) => (
-          <li key={g.key} className="toc__item toc__item--h2">
-            <a href={`#${g.key}`}>{g.label}</a>
+        <li className="toc__item toc__item--h2"><a href="#latest">{copy.latest}</a></li>
+        <li className="toc__item toc__item--h2"><a href="#archive">{copy.archive}</a></li>
+        {groups.map((group) => (
+          <li key={group.key} className="toc__item toc__item--h3">
+            <a href={`#${group.key}`}>{group.label}</a>
           </li>
         ))}
       </ul>
@@ -70,34 +108,80 @@ export function Home() {
   );
 
   return (
-    <Layout sidebar={sidebar || undefined}>
-      <div className="home-head">
-        <h1 className="home-title">Adrian Santos Blog</h1>
-        <div className="lang-switch" role="group" aria-label="Language">
+    <Layout sidebar={sidebar || undefined} sidebarClassName="page__sidebar--home">
+      <section className="home-intro" aria-labelledby="home-title">
+        <p className="home-intro__eyebrow">{copy.eyebrow}</p>
+        <h1 id="home-title" className="home-title">Adrian Santos</h1>
+        <p className="home-intro__description">{copy.introduction}</p>
+      </section>
+
+      <div className="language-filter" role="group" aria-label={preference.interfaceLanguage === 'pt' ? 'Filtrar por idioma' : 'Filter by language'}>
+        {(['all', 'pt', 'en'] as const).map((filter) => (
           <button
+            key={filter}
             type="button"
-            className={`lang-switch__btn${language === 'pt' ? ' lang-switch__btn--active' : ''}`}
-            onClick={() => changeLanguage('pt')}
+            className={`language-filter__button${preference.filter === filter ? ' language-filter__button--active' : ''}`}
+            aria-pressed={preference.filter === filter}
+            onClick={() => changeLanguage(filter)}
           >
-            PT
+            <span>{filter === 'all' ? copy.all : filter.toUpperCase()}</span>
+            {!loading && <span className="language-filter__count">{counts[filter]}</span>}
           </button>
-          <span className="lang-switch__sep">|</span>
-          <button
-            type="button"
-            className={`lang-switch__btn${language === 'en' ? ' lang-switch__btn--active' : ''}`}
-            onClick={() => changeLanguage('en')}
-          >
-            EN
-          </button>
-        </div>
+        ))}
       </div>
 
       {loading ? (
-        <p className="archive__empty">Loading…</p>
+        <p className="archive__empty" role="status">{copy.loading}</p>
       ) : error ? (
-        <p className="archive__empty">{error}</p>
+        <p className="archive__empty archive__empty--error" role="alert">{copy.error}</p>
+      ) : filtered.length === 0 ? (
+        <div className="archive__empty">
+          <p>{copy.empty}</p>
+          {preference.filter !== 'all' && (
+            <button type="button" className="text-button" onClick={() => changeLanguage('all')}>
+              {copy.viewAll}
+            </button>
+          )}
+        </div>
       ) : (
-        <PostArchive posts={filtered} language={language} />
+        <>
+          <section id="latest" className="home-section" aria-labelledby="latest-title">
+            <div className="section-heading">
+              <h2 id="latest-title">{copy.latest}</h2>
+            </div>
+            <div className="latest-list">
+              {latest.map((post) => (
+                <article key={post.id} className="latest-article">
+                  <div className="latest-article__meta">
+                    {post.published_at && <time dateTime={post.published_at}>{formatLongDate(post.published_at, preference.interfaceLanguage)}</time>}
+                    <span className="post__lang">{post.language.toUpperCase()}</span>
+                  </div>
+                  <h3 className="latest-article__title">
+                    <Link to={`/posts/${post.slug}`}>{post.title}</Link>
+                  </h3>
+                  {post.excerpt && <p className="latest-article__excerpt">{post.excerpt}</p>}
+                  {post.tags.length > 0 && (
+                    <ul className="post__tags post__tags--compact" aria-label="Tags">
+                      {post.tags.slice(0, 3).map((tag) => <li key={tag} className="post__tag">#{tag}</li>)}
+                    </ul>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section id="archive" className="home-section" aria-labelledby="archive-title">
+            <div className="section-heading">
+              <h2 id="archive-title">{copy.archive}</h2>
+              <span>{filtered.length}</span>
+            </div>
+            <PostArchive
+              posts={filtered}
+              language={preference.interfaceLanguage}
+              showLanguage={preference.filter === 'all'}
+            />
+          </section>
+        </>
       )}
     </Layout>
   );
