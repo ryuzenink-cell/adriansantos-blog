@@ -1,17 +1,21 @@
 import { useTheme } from '../hooks/useTheme';
+import type { Language } from '../types';
 
 /** Botão de alternância de tema claro/escuro (sol/lua). */
-export function ThemeToggle() {
+export function ThemeToggle({ language = 'en' }: { language?: Language }) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+  const label = language === 'pt'
+    ? (isDark ? 'Mudar para o tema claro' : 'Mudar para o tema escuro')
+    : (isDark ? 'Switch to light theme' : 'Switch to dark theme');
 
   return (
     <button
       type="button"
       className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={isDark ? 'Light theme' : 'Dark theme'}
+      aria-label={label}
+      title={label}
     >
       {isDark ? (
         // Sol

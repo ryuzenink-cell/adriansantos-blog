@@ -11,7 +11,11 @@ import type { PostDTO } from './db';
 import { sanitizeHtml } from './sanitize';
 import {
   AUTHOR_NAME,
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OG_IMAGE_ALT,
+  PROFESSIONAL_GITHUB_URL,
   SITE_NAME,
+  YOROKOBI_STUDIO_URL,
   buildDescription,
   datesDiffer,
   estimateReadingMinutes,
@@ -106,16 +110,23 @@ function renderPostArticle(post: PostDTO): string {
   const footerCopy = isPt
     ? 'Veja outros artigos técnicos ou procure um tópico específico.'
     : 'Read more technical articles or look for a specific topic.';
+  const githubLabel = isPt
+    ? 'GitHub profissional de Adrian Santos (abre em uma nova aba)'
+    : 'Adrian Santos professional GitHub profile (opens in a new tab)';
+  const studioLabel = isPt
+    ? 'Yorokobi Studio (abre em uma nova aba)'
+    : 'Yorokobi Studio (opens in a new tab)';
 
   return (
     `<div class="page">` +
+    `<a href="#main-content" class="skip-link">${isPt ? 'Pular para o conteúdo' : 'Skip to content'}</a>` +
     `<header class="site-header"><div class="site-header__inner">` +
     `<a href="/" class="site-brand">${escapeHtml(SITE_NAME)}</a>` +
     `<nav class="site-nav site-nav--server" aria-label="Primary">` +
     `<a href="/about" class="site-nav__link">About</a>` +
     `<a href="/search" class="site-nav__link">${isPt ? 'Busca' : 'Search'}</a>` +
     `</nav></div></header>` +
-    `<div class="page__body${hasSidebar ? ' page__body--with-sidebar' : ''}"><main class="page__main">` +
+    `<div class="page__body${hasSidebar ? ' page__body--with-sidebar' : ''}"><main id="main-content" class="page__main" tabindex="-1">` +
     `<article class="post">` +
     `<a href="/" class="back-link">← ${escapeHtml(backLabel)}</a>` +
     `<header class="post__header">` +
@@ -134,7 +145,11 @@ function renderPostArticle(post: PostDTO): string {
     `</footer>` +
     `</article>` +
     `</main>${renderServerToc(parsedContent.headings, tocTitle)}</div>` +
-    `<footer class="site-footer"><p>© ${new Date().getFullYear()} ${escapeHtml(AUTHOR_NAME)} · Built with Vite + React</p></footer>` +
+    `<footer class="site-footer"><p>© ${new Date().getFullYear()} ${escapeHtml(AUTHOR_NAME)}</p>` +
+    `<nav class="site-footer__links" aria-label="${isPt ? 'Links profissionais' : 'Professional links'}">` +
+    `<a href="${escapeAttr(PROFESSIONAL_GITHUB_URL)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeAttr(githubLabel)}">GitHub <span aria-hidden="true">↗</span></a>` +
+    `<a href="${escapeAttr(YOROKOBI_STUDIO_URL)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeAttr(studioLabel)}">Yorokobi Studio <span aria-hidden="true">↗</span></a>` +
+    `</nav></footer>` +
     `</div>`
   );
 }
@@ -149,6 +164,7 @@ function buildJsonLd(post: PostDTO, canonical: string, description: string): Rec
     mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
     author: { '@type': 'Person', name: AUTHOR_NAME },
     publisher: { '@type': 'Person', name: AUTHOR_NAME },
+    image: DEFAULT_OG_IMAGE,
   };
   if (post.published_at) jsonLd.datePublished = post.published_at;
   if (post.updated_at) jsonLd.dateModified = post.updated_at;
@@ -156,16 +172,7 @@ function buildJsonLd(post: PostDTO, canonical: string, description: string): Rec
 }
 
 function buildHeadExtras(post: PostDTO, canonical: string, description: string): string {
-  const locale = ogLocale(post.language);
-  const parts = [
-    `<link rel="canonical" href="${escapeAttr(canonical)}">`,
-    `<meta property="og:type" content="article">`,
-    `<meta property="og:title" content="${escapeAttr(post.title)}">`,
-    `<meta property="og:description" content="${escapeAttr(description)}">`,
-    `<meta property="og:url" content="${escapeAttr(canonical)}">`,
-    `<meta property="og:site_name" content="${escapeAttr(SITE_NAME)}">`,
-    `<meta property="og:locale" content="${locale}">`,
-  ];
+  const parts: string[] = [];
   if (post.published_at) {
     parts.push(`<meta property="article:published_time" content="${escapeAttr(post.published_at)}">`);
   }
@@ -173,9 +180,6 @@ function buildHeadExtras(post: PostDTO, canonical: string, description: string):
     parts.push(`<meta property="article:modified_time" content="${escapeAttr(post.updated_at)}">`);
   }
   parts.push(
-    `<meta name="twitter:card" content="summary_large_image">`,
-    `<meta name="twitter:title" content="${escapeAttr(post.title)}">`,
-    `<meta name="twitter:description" content="${escapeAttr(description)}">`,
     `<script type="application/ld+json">${safeJsonLd(buildJsonLd(post, canonical, description))}</script>`,
   );
   return parts.join('');
@@ -203,6 +207,86 @@ export function renderPostDocument(shell: Response, post: PostDTO): Response {
     .on('meta[name="description"]', {
       element(el) {
         el.setAttribute('content', description);
+      },
+    })
+    .on('link[rel="canonical"]', {
+      element(el) {
+        el.setAttribute('href', canonical);
+      },
+    })
+    .on('meta[property="og:type"]', {
+      element(el) {
+        el.setAttribute('content', 'article');
+      },
+    })
+    .on('meta[property="og:title"]', {
+      element(el) {
+        el.setAttribute('content', post.title);
+      },
+    })
+    .on('meta[property="og:description"]', {
+      element(el) {
+        el.setAttribute('content', description);
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el) {
+        el.setAttribute('content', canonical);
+      },
+    })
+    .on('meta[property="og:site_name"]', {
+      element(el) {
+        el.setAttribute('content', SITE_NAME);
+      },
+    })
+    .on('meta[property="og:locale"]', {
+      element(el) {
+        el.setAttribute('content', ogLocale(post.language));
+      },
+    })
+    .on('meta[property="og:image"]', {
+      element(el) {
+        el.setAttribute('content', DEFAULT_OG_IMAGE);
+      },
+    })
+    .on('meta[property="og:image:width"]', {
+      element(el) {
+        el.setAttribute('content', '1200');
+      },
+    })
+    .on('meta[property="og:image:height"]', {
+      element(el) {
+        el.setAttribute('content', '630');
+      },
+    })
+    .on('meta[property="og:image:alt"]', {
+      element(el) {
+        el.setAttribute('content', DEFAULT_OG_IMAGE_ALT);
+      },
+    })
+    .on('meta[name="twitter:card"]', {
+      element(el) {
+        el.setAttribute('content', 'summary_large_image');
+      },
+    })
+    .on('meta[name="twitter:title"]', {
+      element(el) {
+        el.setAttribute('content', post.title);
+      },
+    })
+    .on('meta[name="twitter:description"]', {
+      element(el) {
+        el.setAttribute('content', description);
+      },
+    })
+    .on('meta[name="twitter:image"]', {
+      element(el) {
+        el.setAttribute('content', DEFAULT_OG_IMAGE);
+      },
+    })
+    .on('meta[name="twitter:image:alt"]', {
+      element(el) {
+        el.setAttribute('content', DEFAULT_OG_IMAGE_ALT);
       },
     })
     .on('head', {
@@ -238,10 +322,11 @@ export interface ErrorPageOptions {
 function renderErrorArticle({ heading, message }: ErrorPageOptions): string {
   return (
     `<div class="page">` +
+    `<a href="#main-content" class="skip-link">Skip to content</a>` +
     `<header class="site-header"><div class="site-header__inner">` +
     `<a href="/" class="site-brand">${escapeHtml(SITE_NAME)}</a>` +
     `</div></header>` +
-    `<div class="page__body"><main class="page__main">` +
+    `<div class="page__body"><main id="main-content" class="page__main" tabindex="-1">` +
     `<article class="prose prose--page">` +
     `<h1>${escapeHtml(heading)}</h1>` +
     `<p>${escapeHtml(message)}</p>` +

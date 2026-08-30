@@ -68,6 +68,7 @@ export function Search() {
       ? 'Busque artigos por título, resumo, idioma ou tags no AdrianSantos.blog.'
       : 'Search AdrianSantos.blog articles by title, summary, language, or tags.',
     canonicalPath: '/search',
+    language: preference.interfaceLanguage,
   });
 
   useEffect(() => setQuery(urlQuery), [urlQuery]);
@@ -117,7 +118,7 @@ export function Search() {
     : `${results.length} ${copy.manyResults} “${trimmed}”`;
 
   return (
-    <Layout>
+    <Layout language={preference.interfaceLanguage}>
       <div className="search">
         <header className="search__header">
           <h1 className="search__title">{copy.title}</h1>

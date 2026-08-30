@@ -48,6 +48,8 @@ export function PostPage() {
     title: post ? `${post.title} | Adrian Santos` : 'AdrianSantos.blog',
     description: post?.excerpt || undefined,
     canonicalPath: post ? `/posts/${post.slug}` : undefined,
+    language: post?.language,
+    type: 'article',
   });
 
   if (loading) {
@@ -82,7 +84,7 @@ export function PostPage() {
     ) : undefined;
 
   return (
-    <Layout sidebar={sidebar}>
+    <Layout sidebar={sidebar} language={post.language}>
       <article className="post">
         <Link to="/" className="back-link">
           ← {isPt ? 'Voltar' : 'Back'}

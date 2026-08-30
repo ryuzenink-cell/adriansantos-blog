@@ -6,8 +6,12 @@
 export const SITE_URL = 'https://adriansantos.blog';
 export const SITE_NAME = 'AdrianSantos.blog';
 export const AUTHOR_NAME = 'Adrian Santos';
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
+export const DEFAULT_OG_IMAGE_ALT = 'Adrian Santos, Software Engineering, adriansantos.blog.';
+export const PROFESSIONAL_GITHUB_URL = 'https://github.com/AdrianSantosBFX';
+export const YOROKOBI_STUDIO_URL = 'https://www.yorokobistudio.com/';
 export const DEFAULT_DESCRIPTION =
-  'Adrian Santos Blog - notes on software engineering and personal projects.';
+  'Technical articles by Adrian Santos on software engineering, study, career, and projects.';
 
 export function escapeHtml(value: string): string {
   return value

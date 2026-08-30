@@ -2,9 +2,39 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { InstallAppButton } from './InstallAppButton';
+import { PROFESSIONAL_GITHUB_URL, YOROKOBI_STUDIO_URL } from '../utils/links';
+import type { Language } from '../types';
 
-// Link do GitHub do autor.
-const GITHUB_URL = 'https://github.com/ryuzenink-cell';
+const COPY = {
+  en: {
+    primary: 'Primary navigation',
+    mobile: 'Mobile navigation',
+    about: 'About',
+    search: 'Search',
+    searchPlaceholder: 'Search...',
+    searchLabel: 'Search articles',
+    github: 'Adrian Santos professional GitHub profile (opens in a new tab)',
+    studio: 'Yorokobi Studio (opens in a new tab)',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    install: 'Install app',
+    installLabel: 'Install this blog as an app',
+  },
+  pt: {
+    primary: 'Navegação principal',
+    mobile: 'Navegação móvel',
+    about: 'Sobre',
+    search: 'Busca',
+    searchPlaceholder: 'Buscar...',
+    searchLabel: 'Buscar artigos',
+    github: 'GitHub profissional de Adrian Santos (abre em uma nova aba)',
+    studio: 'Yorokobi Studio (abre em uma nova aba)',
+    openMenu: 'Abrir menu',
+    closeMenu: 'Fechar menu',
+    install: 'Instalar app',
+    installLabel: 'Instalar este blog como aplicativo',
+  },
+} satisfies Record<Language, Record<string, string>>;
 
 function GitHubIcon() {
   return (
@@ -14,33 +44,31 @@ function GitHubIcon() {
   );
 }
 
-/** Cabeçalho público responsivo: nav desktop + menu hambúrguer no mobile. */
-export function Header() {
+export function Header({ language }: { language: Language }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
+  const copy = COPY[language];
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const nextQuery = query.trim();
+    navigate(nextQuery ? `/search?q=${encodeURIComponent(nextQuery)}` : '/search');
   };
 
-  // Fecha o menu ao trocar de rota.
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  // Fecha com Escape e ao clicar fora.
   useEffect(() => {
     if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
     };
-    const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    const onClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
     };
@@ -53,26 +81,36 @@ export function Header() {
   }, [menuOpen]);
 
   const closeMenu = () => setMenuOpen(false);
+  const currentPage = (path: string) => location.pathname === path ? 'page' as const : undefined;
 
   return (
     <header className="site-header" ref={menuRef}>
       <div className="site-header__inner">
-        <Link to="/" className="site-brand">
+        <Link to="/" className="site-brand" aria-current={currentPage('/')}>
           AdrianSantos.blog
         </Link>
 
-        {/* Navegação desktop */}
-        <nav className="site-nav site-nav--desktop" aria-label="Primary">
-          <Link to="/about" className="site-nav__link">
-            About
+        <nav className="site-nav site-nav--desktop" aria-label={copy.primary}>
+          <Link to="/about" className="site-nav__link" aria-current={currentPage('/about')}>
+            {copy.about}
           </Link>
           <a
-            href={GITHUB_URL}
-            className="site-nav__link"
+            href={YOROKOBI_STUDIO_URL}
+            className="site-nav__link site-nav__link--studio"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub profile"
-            title="GitHub"
+            aria-label={copy.studio}
+            title="Yorokobi Studio"
+          >
+            Yorokobi <span className="external-mark" aria-hidden="true">↗</span>
+          </a>
+          <a
+            href={PROFESSIONAL_GITHUB_URL}
+            className="site-nav__link site-nav__link--icon"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.github}
+            title={copy.github}
           >
             <GitHubIcon />
           </a>
@@ -80,26 +118,30 @@ export function Header() {
             <input
               type="search"
               className="site-search__input"
-              placeholder="Search…"
+              placeholder={copy.searchPlaceholder}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search posts"
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label={copy.searchLabel}
             />
           </form>
-          <InstallAppButton className="btn btn--ghost install-btn" />
-          <ThemeToggle />
+          <InstallAppButton
+            className="btn btn--ghost install-btn"
+            label={copy.install}
+            ariaLabel={copy.installLabel}
+          />
+          <ThemeToggle language={language} />
         </nav>
 
-        {/* Ações mobile: tema sempre visível + hambúrguer */}
         <div className="site-header__mobile">
-          <ThemeToggle />
+          <ThemeToggle language={language} />
           <button
             type="button"
             className="hamburger"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? copy.closeMenu : copy.openMenu}
+            title={menuOpen ? copy.closeMenu : copy.openMenu}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setMenuOpen((value) => !value)}
           >
             {menuOpen ? (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -114,39 +156,50 @@ export function Header() {
         </div>
       </div>
 
-      {/* Painel do menu mobile */}
       {menuOpen && (
-        <nav id="mobile-menu" className="mobile-menu" aria-label="Mobile">
-          <form className="mobile-menu__search" role="search" onSubmit={(e) => { submitSearch(e); closeMenu(); }}>
+        <nav id="mobile-menu" className="mobile-menu" aria-label={copy.mobile}>
+          <form className="mobile-menu__search" role="search" onSubmit={(event) => { submitSearch(event); closeMenu(); }}>
             <input
               type="search"
               className="search__input"
-              placeholder="Search…"
+              placeholder={copy.searchPlaceholder}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search posts"
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label={copy.searchLabel}
             />
           </form>
-          <Link to="/about" className="mobile-menu__link" onClick={closeMenu}>
-            About
+          <Link to="/about" className="mobile-menu__link" aria-current={currentPage('/about')} onClick={closeMenu}>
+            {copy.about}
           </Link>
-          <Link to="/search" className="mobile-menu__link" onClick={closeMenu}>
-            Search
+          <Link to="/search" className="mobile-menu__link" aria-current={currentPage('/search')} onClick={closeMenu}>
+            {copy.search}
           </Link>
           <a
-            href={GITHUB_URL}
+            href={YOROKOBI_STUDIO_URL}
             className="mobile-menu__link"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub profile"
+            aria-label={copy.studio}
+            onClick={closeMenu}
+          >
+            Yorokobi Studio <span className="external-mark" aria-hidden="true">↗</span>
+          </a>
+          <a
+            href={PROFESSIONAL_GITHUB_URL}
+            className="mobile-menu__link"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.github}
             onClick={closeMenu}
           >
             <GitHubIcon /> GitHub
           </a>
-          <Link to="/admin" className="mobile-menu__link" onClick={closeMenu}>
-            Admin
-          </Link>
-          <InstallAppButton className="mobile-menu__link mobile-menu__install" onInstalled={closeMenu} />
+          <InstallAppButton
+            className="mobile-menu__link mobile-menu__install"
+            label={copy.install}
+            ariaLabel={copy.installLabel}
+            onInstalled={closeMenu}
+          />
         </nav>
       )}
     </header>

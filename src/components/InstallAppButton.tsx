@@ -6,6 +6,7 @@ interface InstallAppButtonProps {
   label?: string;
   /** Chamado após o clique (ex.: fechar o menu mobile). */
   onInstalled?: () => void;
+  ariaLabel?: string;
 }
 
 /**
@@ -13,7 +14,12 @@ interface InstallAppButtonProps {
  * (Chromium) e o app ainda não está instalado. Em navegadores sem suporte,
  * retorna null — não polui a navbar.
  */
-export function InstallAppButton({ className, label = 'Install App', onInstalled }: InstallAppButtonProps) {
+export function InstallAppButton({
+  className,
+  label = 'Install App',
+  onInstalled,
+  ariaLabel = 'Install this blog as an app',
+}: InstallAppButtonProps) {
   const { canInstall, installApp } = usePwaInstall();
 
   if (!canInstall) return null;
@@ -28,7 +34,7 @@ export function InstallAppButton({ className, label = 'Install App', onInstalled
       type="button"
       className={className ?? 'btn btn--ghost install-btn'}
       onClick={() => void handleClick()}
-      aria-label="Install this blog as an app"
+      aria-label={ariaLabel}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 3v12" />

@@ -14,6 +14,7 @@ import {
   type LanguagePreference,
 } from '../utils/languagePreference';
 import type { Language, Post } from '../types';
+import { PROFESSIONAL_GITHUB_URL, YOROKOBI_STUDIO_URL } from '../utils/links';
 
 const COPY = {
   en: {
@@ -27,6 +28,10 @@ const COPY = {
     error: 'The articles could not be loaded. Please try again in a moment.',
     empty: 'No published articles match this language yet.',
     viewAll: 'View articles in all languages',
+    github: 'Professional GitHub',
+    githubLabel: 'Adrian Santos professional GitHub profile (opens in a new tab)',
+    studio: 'Yorokobi Studio',
+    studioLabel: 'Yorokobi Studio (opens in a new tab)',
   },
   pt: {
     eyebrow: 'Engenharia de Software',
@@ -39,6 +44,10 @@ const COPY = {
     error: 'Não foi possível carregar os artigos. Tente novamente em instantes.',
     empty: 'Ainda não há artigos publicados neste idioma.',
     viewAll: 'Ver artigos em todos os idiomas',
+    github: 'GitHub profissional',
+    githubLabel: 'GitHub profissional de Adrian Santos (abre em uma nova aba)',
+    studio: 'Yorokobi Studio',
+    studioLabel: 'Yorokobi Studio (abre em uma nova aba)',
   },
 } satisfies Record<Language, Record<string, string>>;
 
@@ -55,6 +64,7 @@ export function Home() {
       ? 'Artigos técnicos de Adrian Santos sobre Engenharia de Software, estudos, carreira e projetos.'
       : 'Technical articles by Adrian Santos on software engineering, study, career, and projects.',
     canonicalPath: '/',
+    language: preference.interfaceLanguage,
   });
 
   useEffect(() => {
@@ -108,11 +118,35 @@ export function Home() {
   );
 
   return (
-    <Layout sidebar={sidebar || undefined} sidebarClassName="page__sidebar--home">
+    <Layout
+      sidebar={sidebar || undefined}
+      sidebarClassName="page__sidebar--home"
+      language={preference.interfaceLanguage}
+    >
       <section className="home-intro" aria-labelledby="home-title">
         <p className="home-intro__eyebrow">{copy.eyebrow}</p>
         <h1 id="home-title" className="home-title">Adrian Santos</h1>
         <p className="home-intro__description">{copy.introduction}</p>
+        <div className="home-intro__links" aria-label={preference.interfaceLanguage === 'pt' ? 'Links profissionais' : 'Professional links'}>
+          <a
+            href={PROFESSIONAL_GITHUB_URL}
+            className="professional-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.githubLabel}
+          >
+            {copy.github} <span aria-hidden="true">↗</span>
+          </a>
+          <a
+            href={YOROKOBI_STUDIO_URL}
+            className="professional-link professional-link--studio"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.studioLabel}
+          >
+            {copy.studio} <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </section>
 
       <div className="language-filter" role="group" aria-label={preference.interfaceLanguage === 'pt' ? 'Filtrar por idioma' : 'Filter by language'}>
